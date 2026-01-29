@@ -28,19 +28,19 @@ public interface IDebugSession {
     void terminate();
 
     // breakpoints
-    IBreakpoint createBreakpoint(String className, int lineNumber, int hitCount, String condition, String logMessage);
+    IBreakpoint createBreakpoint(String className, int lineNumber, int hitCount, String condition, String logMessage, int suspendPolicy);
 
-    IBreakpoint createBreakpoint(JavaBreakpointLocation sourceLocation, int hitCount, String condition, String logMessage);
+    IBreakpoint createBreakpoint(JavaBreakpointLocation sourceLocation, int hitCount, String condition, String logMessage, int suspendPolicy);
 
     IWatchpoint createWatchPoint(String className, String fieldName, String accessType, String condition, int hitCount);
 
-    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught);
+    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught);
 
-    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, String[] classFilters, String[] classExclusionFilters);
+    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught, String[] classFilters, String[] classExclusionFilters);
 
-    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, String[] exceptionTypes, String[] classFilters, String[] classExclusionFilters);
+    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught, String[] exceptionTypes, String[] classFilters, String[] classExclusionFilters);
 
-    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, String[] exceptionTypes, String[] classFilters, String[] classExclusionFilters,
+    void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught, String[] exceptionTypes, String[] classFilters, String[] classExclusionFilters,
         boolean async);
 
     IMethodBreakpoint createFunctionBreakpoint(String className, String functionName, String condition, int hitCount);
@@ -52,10 +52,4 @@ public interface IDebugSession {
     IEventHub getEventHub();
 
     VirtualMachine getVM();
-
-    /**
-     * Returns whether breakpoints should suspend all threads or just the event thread.
-     * This value is captured at session start and persists for the session lifetime.
-     */
-    boolean shouldSuspendAllThreads();
 }
