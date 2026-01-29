@@ -41,29 +41,26 @@ public class Breakpoint implements IBreakpoint {
     private int hitCount = 0;
     private String condition = null;
     private String logMessage = null;
+    private int suspendPolicy = BreakpointRequest.SUSPEND_EVENT_THREAD;
     private HashMap<Object, Object> propertyMap = new HashMap<>();
-    private final boolean suspendAllThreads;
 
     private boolean async = false;
 
-    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, boolean suspendAllThreads) {
-        this(vm, eventHub, className, lineNumber, 0, null, suspendAllThreads);
+    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber) {
+        this(vm, eventHub, className, lineNumber, 0, null);
     }
 
-    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, int hitCount, boolean suspendAllThreads) {
-        this(vm, eventHub, className, lineNumber, hitCount, null, suspendAllThreads);
+    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, int hitCount) {
+        this(vm, eventHub, className, lineNumber, hitCount, null);
     }
 
-    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, int hitCount,
-            String condition, boolean suspendAllThreads) {
-        this(vm, eventHub, className, lineNumber, hitCount, condition, null, suspendAllThreads);
+    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, int hitCount, String condition) {
+        this(vm, eventHub, className, lineNumber, hitCount, condition, null);
     }
 
-    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, int hitCount,
-            String condition, String logMessage, boolean suspendAllThreads) {
+    Breakpoint(VirtualMachine vm, IEventHub eventHub, String className, int lineNumber, int hitCount, String condition, String logMessage) {
         this.vm = vm;
         this.eventHub = eventHub;
-        this.suspendAllThreads = suspendAllThreads;
         String contextClass = className;
         String methodName = null;
         String methodSignature = null;
@@ -83,15 +80,13 @@ public class Breakpoint implements IBreakpoint {
         this.logMessage = logMessage;
     }
 
-    Breakpoint(VirtualMachine vm, IEventHub eventHub, JavaBreakpointLocation sourceLocation, int hitCount,
-            String condition, String logMessage, boolean suspendAllThreads) {
+    Breakpoint(VirtualMachine vm, IEventHub eventHub, JavaBreakpointLocation sourceLocation, int hitCount, String condition, String logMessage) {
         this.vm = vm;
         this.eventHub = eventHub;
         this.sourceLocation = sourceLocation;
         this.hitCount = hitCount;
         this.condition = condition;
         this.logMessage = logMessage;
-        this.suspendAllThreads = suspendAllThreads;
     }
 
     // IDebugResource
@@ -207,19 +202,6 @@ public class Breakpoint implements IBreakpoint {
     @Override
     public void setAsync(boolean async) {
         this.async = async;
-    }
-
-    @Override
-    public void setSuspendPolicy(String policy) {
-    }
-
-    @Override
-    public String getSuspendPolicy() {
-        return suspendAllThreads ? "SUSPEND_ALL" : "SUSPEND_EVENT_THREAD";
-    }
-
-    protected boolean suspendAllThreads() {
-        return suspendAllThreads;
     }
 
     @Override
@@ -431,11 +413,7 @@ public class Breakpoint implements IBreakpoint {
 
             newLocations.forEach(location -> {
                 BreakpointRequest request = vm.eventRequestManager().createBreakpointRequest(location);
-                if ("SUSPEND_ALL".equals(getSuspendPolicy())) {
-                    request.setSuspendPolicy(BreakpointRequest.SUSPEND_ALL);
-                } else {
-                    request.setSuspendPolicy(BreakpointRequest.SUSPEND_EVENT_THREAD);
-                }
+                request.setSuspendPolicy(suspendPolicy);
                 if (hitCount > 0) {
                     request.addCountFilter(hitCount);
                 }
@@ -490,5 +468,15 @@ public class Breakpoint implements IBreakpoint {
     @Override
     public Object getProperty(Object key) {
         return propertyMap.get(key);
+    }
+
+    @Override
+    public int getSuspendPolicy() {
+        return this.suspendPolicy;
+    }
+
+    @Override
+    public void setSuspendPolicy(int suspendPolicy) {
+        this.suspendPolicy = suspendPolicy;
     }
 }
