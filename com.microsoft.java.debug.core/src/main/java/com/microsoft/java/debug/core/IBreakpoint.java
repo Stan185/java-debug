@@ -49,14 +49,17 @@ public interface IBreakpoint extends IDebugResource {
 
     void setLogMessage(String logMessage);
 
-    int getSuspendPolicy();
-
-    void setSuspendPolicy(int suspendPolicy);
-
     default void setAsync(boolean async) {
     }
 
     default boolean async() {
         return false;
+    }
+
+    default void setSuspendPolicy(String policy) {
+    }
+
+    default String getSuspendPolicy() {
+        return null;
     }
 }

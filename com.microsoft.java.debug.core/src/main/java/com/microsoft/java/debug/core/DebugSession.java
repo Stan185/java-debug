@@ -36,9 +36,12 @@ public class DebugSession implements IDebugSession {
     private EventHub eventHub = new EventHub();
     private List<EventRequest> eventRequests = new ArrayList<>();
     private List<Disposable> subscriptions = new ArrayList<>();
+    private final boolean suspendAllThreads;
 
     public DebugSession(VirtualMachine virtualMachine) {
         vm = virtualMachine;
+        // Capture suspend policy at session start - this persists for the session lifetime
+        this.suspendAllThreads = DebugSettings.getCurrent().suspendAllThreads;
     }
 
     @Override
@@ -127,36 +130,32 @@ public class DebugSession implements IDebugSession {
     }
 
     @Override
-    public IBreakpoint createBreakpoint(JavaBreakpointLocation sourceLocation, int hitCount, String condition, String logMessage, int suspendPolicy) {
-        EvaluatableBreakpoint breakpoint = new EvaluatableBreakpoint(vm, this.getEventHub(), sourceLocation, hitCount, condition, logMessage);
-        breakpoint.setSuspendPolicy(suspendPolicy);
-        return breakpoint;
+    public IBreakpoint createBreakpoint(JavaBreakpointLocation sourceLocation, int hitCount, String condition, String logMessage) {
+        return new EvaluatableBreakpoint(vm, this.getEventHub(), sourceLocation, hitCount, condition, logMessage, suspendAllThreads);
     }
 
     @Override
-    public IBreakpoint createBreakpoint(String className, int lineNumber, int hitCount, String condition, String logMessage, int suspendPolicy) {
-        EvaluatableBreakpoint breakpoint = new EvaluatableBreakpoint(vm, this.getEventHub(), className, lineNumber, hitCount, condition, logMessage);
-        breakpoint.setSuspendPolicy(suspendPolicy);
-        return breakpoint;
+    public IBreakpoint createBreakpoint(String className, int lineNumber, int hitCount, String condition, String logMessage) {
+        return new EvaluatableBreakpoint(vm, this.getEventHub(), className, lineNumber, hitCount, condition, logMessage, suspendAllThreads);
     }
 
     @Override
     public IWatchpoint createWatchPoint(String className, String fieldName, String accessType, String condition, int hitCount) {
-        return new Watchpoint(vm, this.getEventHub(), className, fieldName, accessType, condition, hitCount);
+        return new Watchpoint(vm, this.getEventHub(), className, fieldName, accessType, condition, hitCount, suspendAllThreads);
     }
 
     @Override
-    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught) {
-        setExceptionBreakpoints(notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, null, null);
+    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught) {
+        setExceptionBreakpoints(notifyCaught, notifyUncaught, null, null);
     }
 
     @Override
-    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught, String[] classFilters, String[] classExclusionFilters) {
-        setExceptionBreakpoints(notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, null, classFilters, classExclusionFilters);
+    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, String[] classFilters, String[] classExclusionFilters) {
+        setExceptionBreakpoints(notifyCaught, notifyUncaught, null, classFilters, classExclusionFilters);
     }
 
     @Override
-    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught, String[] exceptionTypes,
+    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, String[] exceptionTypes,
         String[] classFilters, String[] classExclusionFilters) {
         EventRequestManager manager = vm.eventRequestManager();
 
@@ -188,7 +187,19 @@ public class DebugSession implements IDebugSession {
             // See org.eclipse.debug.jdi.tests.AbstractJDITest for the example.
 
             if (exceptionTypes == null || exceptionTypes.length == 0) {
-                createExceptionBreakpoint(null, notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, classFilters, classExclusionFilters);
+                ExceptionRequest request = manager.createExceptionRequest(null, notifyCaught, notifyUncaught);
+                request.setSuspendPolicy(suspendAllThreads ? EventRequest.SUSPEND_ALL : EventRequest.SUSPEND_EVENT_THREAD);
+                if (classFilters != null) {
+                    for (String classFilter : classFilters) {
+                        request.addClassFilter(classFilter);
+                    }
+                }
+                if (classExclusionFilters != null) {
+                    for (String exclusionFilter : classExclusionFilters) {
+                        request.addClassExclusionFilter(exclusionFilter);
+                    }
+                }
+                request.enable();
                 return;
             }
 
@@ -208,27 +219,27 @@ public class DebugSession implements IDebugSession {
                         && eventRequests.contains(debugEvent.event.request()))
                     .subscribe(debugEvent -> {
                         ClassPrepareEvent event = (ClassPrepareEvent) debugEvent.event;
-                        createExceptionBreakpoint(event.referenceType(), notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, classFilters, classExclusionFilters);
+                        createExceptionBreakpoint(event.referenceType(), notifyCaught, notifyUncaught, classFilters, classExclusionFilters);
                     });
                 subscriptions.add(subscription);
 
                 // register exception breakpoint in the loaded classes.
                 for (ReferenceType refType : vm.classesByName(exceptionType)) {
-                    createExceptionBreakpoint(refType, notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, classFilters, classExclusionFilters);
+                    createExceptionBreakpoint(refType, notifyCaught, notifyUncaught, classFilters, classExclusionFilters);
                 }
             }
         }
     }
 
     @Override
-    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, int suspendModeOnCaught, int suspendModeOnUncaught, String[] exceptionTypes,
+    public void setExceptionBreakpoints(boolean notifyCaught, boolean notifyUncaught, String[] exceptionTypes,
             String[] classFilters, String[] classExclusionFilters, boolean async) {
         if (async) {
             AsyncJdwpUtils.runAsync(() -> {
-                setExceptionBreakpoints(notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, exceptionTypes, classFilters, classExclusionFilters);
+                setExceptionBreakpoints(notifyCaught, notifyUncaught, exceptionTypes, classFilters, classExclusionFilters);
             });
         } else {
-            setExceptionBreakpoints(notifyCaught, notifyUncaught, suspendModeOnCaught, suspendModeOnUncaught, exceptionTypes, classFilters, classExclusionFilters);
+            setExceptionBreakpoints(notifyCaught, notifyUncaught, exceptionTypes, classFilters, classExclusionFilters);
         }
     }
 
@@ -253,26 +264,21 @@ public class DebugSession implements IDebugSession {
     }
 
     @Override
+    public boolean shouldSuspendAllThreads() {
+        return suspendAllThreads;
+    }
+
+    @Override
     public IMethodBreakpoint createFunctionBreakpoint(String className, String functionName, String condition,
             int hitCount) {
-        return new MethodBreakpoint(vm, this.getEventHub(), className, functionName, condition, hitCount);
+        return new MethodBreakpoint(vm, this.getEventHub(), className, functionName, condition, hitCount, suspendAllThreads);
     }
 
     private void createExceptionBreakpoint(ReferenceType refType, boolean notifyCaught, boolean notifyUncaught,
-                int suspendModeOnCaught, int suspendModeOnUncaught, String[] classFilters, String[] classExclusionFilters) {
-        if (suspendModeOnCaught == suspendModeOnUncaught) {
-            createExceptionBreakpoint(refType, notifyCaught, notifyUncaught, suspendModeOnCaught, classFilters, classExclusionFilters);
-        } else {
-            createExceptionBreakpoint(refType, notifyCaught, notifyUncaught, suspendModeOnCaught, classFilters, classExclusionFilters);
-            createExceptionBreakpoint(refType, notifyCaught, notifyUncaught, suspendModeOnUncaught, classFilters, classExclusionFilters);
-        }
-    }
-
-    private void createExceptionBreakpoint(ReferenceType refType, boolean notifyCaught, boolean notifyUncaught,
-                int suspendMode, String[] classFilters, String[] classExclusionFilters) {
+            String[] classFilters, String[] classExclusionFilters) {
         EventRequestManager manager = vm.eventRequestManager();
         ExceptionRequest request = manager.createExceptionRequest(refType, notifyCaught, notifyUncaught);
-        request.setSuspendPolicy(suspendMode);
+        request.setSuspendPolicy(suspendAllThreads ? EventRequest.SUSPEND_ALL : EventRequest.SUSPEND_EVENT_THREAD);
         if (classFilters != null) {
             for (String classFilter : classFilters) {
                 request.addClassFilter(classFilter);
