@@ -212,19 +212,15 @@ public class SetBreakpointsRequestHandler implements IDebugRequestHandler {
                                     debugEvent.eventSet.resume();
                                 } else {
                                     context.getThreadCache().addEventThread(bpThread, breakpointName);
-                                    boolean allThreadsStopped = event.request() != null
-                                            && event.request().suspendPolicy() == EventRequest.SUSPEND_ALL;
                                     context.getProtocolServer().sendEvent(new Events.StoppedEvent(
-                                            breakpointName, bpThread.uniqueID(), allThreadsStopped));
+                                            breakpointName, bpThread.uniqueID()));
                                 }
                             });
                         });
                     } else {
                         context.getThreadCache().addEventThread(bpThread, breakpointName);
-                        boolean allThreadsStopped = event.request() != null
-                                && event.request().suspendPolicy() == EventRequest.SUSPEND_ALL;
                         context.getProtocolServer().sendEvent(new Events.StoppedEvent(
-                                breakpointName, bpThread.uniqueID(), allThreadsStopped));
+                                breakpointName, bpThread.uniqueID()));
                     }
                     debugEvent.shouldResume = false;
                 }

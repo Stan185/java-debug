@@ -55,11 +55,4 @@ public interface IBreakpoint extends IDebugResource {
     default boolean async() {
         return false;
     }
-
-    default void setSuspendPolicy(String policy) {
-    }
-
-    default String getSuspendPolicy() {
-        return null;
-    }
 }

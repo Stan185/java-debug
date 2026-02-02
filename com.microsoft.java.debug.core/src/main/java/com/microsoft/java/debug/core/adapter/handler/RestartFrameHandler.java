@@ -33,7 +33,6 @@ import com.microsoft.java.debug.core.protocol.Requests.RestartFrameArguments;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.StackFrame;
 import com.sun.jdi.ThreadReference;
-import com.sun.jdi.request.EventRequest;
 import com.sun.jdi.request.StepRequest;
 
 /**
@@ -122,8 +121,7 @@ public class RestartFrameHandler implements IDebugRequestHandler {
             debugEvent.shouldResume = false;
             // Have to send two events to keep the UI sync with the step in operations:
             context.getProtocolServer().sendEvent(new Events.ContinuedEvent(thread.uniqueID()));
-            boolean allThreadsStopped = request.suspendPolicy() == EventRequest.SUSPEND_ALL;
-            context.getProtocolServer().sendEvent(new Events.StoppedEvent("restartframe", thread.uniqueID(), allThreadsStopped));
+            context.getProtocolServer().sendEvent(new Events.StoppedEvent("restartframe", thread.uniqueID()));
             context.getThreadCache().setThreadStoppedReason(thread.uniqueID(), "restartframe");
         });
         request.enable();

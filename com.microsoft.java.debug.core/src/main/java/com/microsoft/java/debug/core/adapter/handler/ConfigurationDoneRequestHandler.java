@@ -40,7 +40,6 @@ import com.sun.jdi.event.ThreadDeathEvent;
 import com.sun.jdi.event.ThreadStartEvent;
 import com.sun.jdi.event.VMDeathEvent;
 import com.sun.jdi.event.VMDisconnectEvent;
-import com.sun.jdi.request.EventRequest;
 import com.sun.jdi.event.VMStartEvent;
 
 public class ConfigurationDoneRequestHandler implements IDebugRequestHandler {
@@ -120,9 +119,7 @@ public class ConfigurationDoneRequestHandler implements IDebugRequestHandler {
                     ((ExceptionEvent) event).catchLocation() == null);
             context.getExceptionManager().setException(thread.uniqueID(), jdiException);
             context.getThreadCache().addEventThread(thread, "exception");
-            boolean allThreadsStopped = event.request() != null
-                    && event.request().suspendPolicy() == EventRequest.SUSPEND_ALL;
-            context.getProtocolServer().sendEvent(new Events.StoppedEvent("exception", thread.uniqueID(), allThreadsStopped));
+            context.getProtocolServer().sendEvent(new Events.StoppedEvent("exception", thread.uniqueID()));
             debugEvent.shouldResume = false;
         } else {
             isImportantEvent = false;

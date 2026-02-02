@@ -40,7 +40,6 @@ import com.microsoft.java.debug.core.protocol.Types.Breakpoint;
 import com.microsoft.java.debug.core.protocol.Types.FunctionBreakpoint;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.event.MethodEntryEvent;
-import com.sun.jdi.request.EventRequest;
 
 public class SetFunctionBreakpointsRequestHandler implements IDebugRequestHandler {
     private boolean registered = false;
@@ -167,20 +166,16 @@ public class SetFunctionBreakpointsRequestHandler implements IDebugRequestHandle
                                                     debugEvent.eventSet.resume();
                                                 } else {
                                                     context.getThreadCache().addEventThread(bpThread, "function breakpoint");
-                                                    boolean allThreadsStopped = methodEntryEvent.request() != null
-                                                            && methodEntryEvent.request().suspendPolicy() == EventRequest.SUSPEND_ALL;
                                                     context.getProtocolServer().sendEvent(new Events.StoppedEvent(
-                                                            "function breakpoint", bpThread.uniqueID(), allThreadsStopped));
+                                                            "function breakpoint", bpThread.uniqueID()));
                                                 }
                                             });
                                 });
 
                             } else {
                                 context.getThreadCache().addEventThread(bpThread, "function breakpoint");
-                                boolean allThreadsStopped = methodEntryEvent.request() != null
-                                        && methodEntryEvent.request().suspendPolicy() == EventRequest.SUSPEND_ALL;
                                 context.getProtocolServer()
-                                        .sendEvent(new Events.StoppedEvent("function breakpoint", bpThread.uniqueID(), allThreadsStopped));
+                                        .sendEvent(new Events.StoppedEvent("function breakpoint", bpThread.uniqueID()));
                             }
 
                             debugEvent.shouldResume = false;

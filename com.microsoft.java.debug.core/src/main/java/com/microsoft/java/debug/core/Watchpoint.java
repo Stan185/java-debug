@@ -46,22 +46,20 @@ public class Watchpoint implements IWatchpoint, IEvaluatableBreakpoint {
     private HashMap<Object, Object> propertyMap = new HashMap<>();
     private Object compiledConditionalExpression = null;
     private Map<Long, Object> compiledExpressions = new ConcurrentHashMap<>();
-    private final boolean suspendAllThreads;
 
     // IDebugResource
     private List<EventRequest> requests = new ArrayList<>();
     private List<Disposable> subscriptions = new ArrayList<>();
 
-    Watchpoint(VirtualMachine vm, IEventHub eventHub, String className, String fieldName, boolean suspendAllThreads) {
-        this(vm, eventHub, className, fieldName, "write", suspendAllThreads);
+    Watchpoint(VirtualMachine vm, IEventHub eventHub, String className, String fieldName) {
+        this(vm, eventHub, className, fieldName, "write");
     }
 
-    Watchpoint(VirtualMachine vm, IEventHub eventHub, String className, String fieldName, String accessType, boolean suspendAllThreads) {
-        this(vm, eventHub, className, fieldName, accessType, null, 0, suspendAllThreads);
+    Watchpoint(VirtualMachine vm, IEventHub eventHub, String className, String fieldName, String accessType) {
+        this(vm, eventHub, className, fieldName, accessType, null, 0);
     }
 
-    Watchpoint(VirtualMachine vm, IEventHub eventHub, String className, String fieldName, String accessType,
-            String condition, int hitCount, boolean suspendAllThreads) {
+    Watchpoint(VirtualMachine vm, IEventHub eventHub, String className, String fieldName, String accessType, String condition, int hitCount) {
         Objects.requireNonNull(vm);
         Objects.requireNonNull(eventHub);
         Objects.requireNonNull(className);
@@ -73,7 +71,6 @@ public class Watchpoint implements IWatchpoint, IEvaluatableBreakpoint {
         this.accessType = accessType;
         this.condition = condition;
         this.hitCount = hitCount;
-        this.suspendAllThreads = suspendAllThreads;
     }
 
     @Override
@@ -215,7 +212,7 @@ public class Watchpoint implements IWatchpoint, IEvaluatableBreakpoint {
         }
 
         watchpointRequests.forEach(request -> {
-            request.setSuspendPolicy(suspendAllThreads ? EventRequest.SUSPEND_ALL : EventRequest.SUSPEND_EVENT_THREAD);
+            request.setSuspendPolicy(WatchpointRequest.SUSPEND_EVENT_THREAD);
             if (hitCount > 0) {
                 request.addCountFilter(hitCount);
             }
